@@ -1,0 +1,6 @@
+*.dSYM
+*.o
+.deps
+hhtest
+out
+test[0-9][0-9][0-9]
