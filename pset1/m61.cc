@@ -24,7 +24,7 @@ void* m61_malloc(size_t sz, const char* file, long line) {
 ///    returned by a previous call to m61_malloc. If `ptr == NULL`,
 ///    does nothing. The free was called at location `file`:`line`.
 
-void m61_free(void *ptr, const char *file, long line) {
+void m61_free(void* ptr, const char* file, long line) {
     (void) file, (void) line;   // avoid uninitialized variable warnings
     // Your code here.
     base_free(ptr);
@@ -39,7 +39,7 @@ void m61_free(void *ptr, const char *file, long line) {
 ///    location `file`:`line`.
 
 void* m61_calloc(size_t nmemb, size_t sz, const char* file, long line) {
-    // Your code here (to fix test016).
+    // Your code here (to fix test014).
     void* ptr = m61_malloc(nmemb * sz, file, line);
     if (ptr) {
         memset(ptr, 0, nmemb * sz);
