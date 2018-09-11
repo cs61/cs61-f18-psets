@@ -54,7 +54,7 @@ void* base_malloc(size_t sz) {
     }
 
     // need a new allocation
-    void* ptr = malloc(sz);
+    void* ptr = malloc(sz ? sz : 1);
     if (ptr) {
         allocs[reinterpret_cast<uintptr_t>(ptr)] = sz;
     }
