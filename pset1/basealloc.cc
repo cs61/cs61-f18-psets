@@ -80,7 +80,7 @@ void base_allocate_disable(int d) {
 
 static void base_allocate_atexit() {
     // clean up freed memory to shut up leak detector
-    for (auto& alloc : allocs) {
+    for (auto& alloc : frees) {
         free(reinterpret_cast<void*>(alloc.first));
     }
 }
