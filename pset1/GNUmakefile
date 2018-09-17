@@ -3,8 +3,6 @@ O ?= -O2
 
 TESTS = $(patsubst %.cc,%,$(sort $(wildcard test[0-9][0-9][0-9].cc)))
 
-RUN_OPTIONS = ASAN_OPTIONS=allocator_may_return_null=1
-
 all: $(TESTS) hhtest
 
 -include build/rules.mk
@@ -40,8 +38,7 @@ run-:
 
 run-%: %
 	@test -d out || mkdir out
-	@-$(RUN_OPTIONS) sh -c "./$^ > out/$<.output 2>&1" >/dev/null 2>&1; true
-	@perl check.pl out/$<.output $<.cc $<
+	@perl check.pl -x $<
 
 clean: clean-main
 clean-main:

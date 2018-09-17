@@ -34,7 +34,7 @@ CFLAGS += -fsanitize=address
 CXXFLAGS += -fsanitize=address
   endif
  endif
- ifeq ($(LEAKSAN),1)
+ ifeq ($(or $(LSAN),$(LEAKSAN)),1)
   ifeq ($(call check_for_sanitizer,leak),1)
 CFLAGS += -fsanitize=leak
 CXXFLAGS += -fsanitize=leak

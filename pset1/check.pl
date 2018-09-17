@@ -5,7 +5,7 @@ use POSIX;
 
 my($Red, $Redctx, $Green, $Cyan, $Off) = ("\x1b[01;31m", "\x1b[0;31m", "\x1b[01;32m", "\x1b[01;36m", "\x1b[0m");
 $Red = $Redctx = $Green = $Cyan = $Off = "" if !-t STDERR || !-t STDOUT;
-my($ContextLines, $LeakCheck, $Make) = (1, 0, 0);
+my($ContextLines, $LeakCheck, $Make, $Exec) = (1, 0, 0, 0);
 
 $SIG{"CHLD"} = sub {};
 my($run61_pid);
@@ -265,8 +265,14 @@ while (@ARGV > 0 && $ARGV[0] =~ /^-/) {
         $LeakCheck = 1;
     } elsif ($ARGV[0] eq "-m") {
         $Make = 1;
+    } elsif ($ARGV[0] eq "-x" && @ARGV > 1) {
+        $Exec = $ARGV[1];
+        shift @ARGV;
+    } elsif ($ARGV[0] =~ /^-x(.+)$/) {
+        $Exec = $1;
     } else {
         print STDERR "Usage: ./check.pl [-c CONTEXT] [-l] [TESTS...]\n";
+        print STDERR "       ./check.pl -x EXECFILE\n";
         exit 1;
     }
     shift @ARGV;
@@ -274,8 +280,10 @@ while (@ARGV > 0 && $ARGV[0] =~ /^-/) {
 
 sub asan_options ($) {
     my($test) = @_;
-    if ($LeakCheck && ($test == 1 || $test == 8 || $test == 10 || $test == 11 || $test == 13
-                       || $test == 14 || $test == 24 || $test == 31 || $test == 38)) {
+    $test = int($1) if $test =~ m{\A(?:\./)?test(\d+)\z};
+    if ($LeakCheck
+        && grep { $_ == $test } (1, 8, 10, 11, 14, 15, 24, 28,
+                                 34, 35, 36, 38)) {
         return "allocator_may_return_null=1 detect_leaks=1";
     } else {
         return "allocator_may_return_null=1 detect_leaks=0";
@@ -291,12 +299,19 @@ sub test_runnable ($) {
       } @ARGV;
 }
 
-if (@ARGV > 0 && -f $ARGV[0]) {
-    exit(run_compare(read_actual($ARGV[0]),
-                     read_expected($ARGV[1]),
-                     $ARGV[0], $ARGV[1], $ARGV[2] ? $ARGV[2] : $ARGV[0]));
+if ($Exec) {
+    die "bad -x option\n" if $Exec !~ m{\A(?:\./)?[^./][^/]+\z};
+    $out = run_sh61("./" . $Exec, "stdout" => "pipe", "stdin" => "/dev/null", "time_limit" => 10, "size_limit" => 80000);
+    my($ofile) = "out/" . $Exec . ".output";
+    if (open(OUT, ">", $ofile)) {
+        print OUT $out->{output};
+        close OUT;
+    }
+    exit(run_compare([split("\n", $out->{"output"})],
+                     read_expected($Exec . ".cc"),
+                     $ofile, $Exec . ".cc", $Exec));
 } else {
-    my($maxtest, $ntest, $ntestfailed) = (38, 0, 0);
+    my($maxtest, $ntest, $ntestfailed) = (39, 0, 0);
     if ($Make) {
         my(@makeargs) = "make";
         foreach my $arg (@ARGV) {
