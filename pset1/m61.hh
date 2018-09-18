@@ -85,8 +85,12 @@ public:
     }
 };
 template <typename T, typename U>
-inline bool operator==(const system_allocator<T>&, const system_allocator<U>&) {
+inline constexpr bool operator==(const system_allocator<T>&, const system_allocator<U>&) {
     return true;
+}
+template <typename T, typename U>
+inline constexpr bool operator!=(const system_allocator<T>&, const system_allocator<U>&) {
+    return false;
 }
 
 #endif
