@@ -301,6 +301,7 @@ sub test_runnable ($) {
 
 if ($Exec) {
     die "bad -x option\n" if $Exec !~ m{\A(?:\./)?[^./][^/]+\z};
+    $ENV{"ASAN_OPTIONS"} = asan_options($Exec);
     $out = run_sh61("./" . $Exec, "stdout" => "pipe", "stdin" => "/dev/null", "time_limit" => 10, "size_limit" => 80000);
     my($ofile) = "out/" . $Exec . ".output";
     if (open(OUT, ">", $ofile)) {
