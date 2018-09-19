@@ -134,12 +134,15 @@ sub read_expected ($) {
 
     my(@expected);
     my($line, $skippable, $sort) = (0, 0, 0);
+    my($allow_asan_warning) = $fname =~ /test(?:005|012|014|015)\.cc/;
     while (defined($_ = <EXPECTED>)) {
         ++$line;
         if (m{^//! \?\?\?\s+$}) {
             $skippable = 1;
         } elsif (m{^//!!SORT\s+$}) {
             $sort = 1;
+        } elsif (m{^//!!(NO_|)ASAN_WARNING\s*$}) {
+            $allow_asan_warning = $1 eq "";
         } elsif (m{^//! }) {
             s{^....(.*?)\s*$}{$1};
             my($m) = {"t" => $_, "line" => $line, "skip" => $skippable,
@@ -184,7 +187,8 @@ sub read_expected ($) {
         }
     }
     return {"l" => \@expected, "nl" => scalar(@expected),
-            "skip" => $skippable, "sort" => $sort};
+            "skip" => $skippable, "sort" => $sort,
+            "allow_asan_warning" => $allow_asan_warning};
 }
 
 sub read_actual ($) {
@@ -219,6 +223,11 @@ sub run_compare ($$$$$) {
     my($a, $e) = (0, 0);
     for (; $a != @$actual; ++$a) {
         $_ = $actual->[$a];
+        if (/^==\d+==\s*WARNING: AddressSanitizer failed to allocate/
+            && $exp->{allow_asan_warning}) {
+            next;
+        }
+
         if ($e == $exp->{nl} && !$exp->{skip}) {
             my($lines) = $exp->{nl} == 1 ? "line" : "lines";
             print STDERR "$Red${outname}FAIL: Too much output (expected ", $exp->{nl}, " output $lines)$Off\n";
