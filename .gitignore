@@ -16,6 +16,7 @@
 .deps
 .gitcheckout
 .goutputstream-*
+.svn
 .project
 a.out
 core*
