@@ -100,7 +100,7 @@ char* strchr(const char* s, int c) {
     if (*s == (char) c) {
         return (char*) s;
     } else {
-        return NULL;
+        return nullptr;
     }
 }
 

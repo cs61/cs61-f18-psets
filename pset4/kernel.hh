@@ -178,7 +178,7 @@ struct program_loader {
                                       // (0 at end of executable)
     const char* data() const;         // pointer to data for current segment
     size_t data_size() const;         // size of `data()`
-    bool readonly() const;            // true iff current segment is readonly
+    bool writable() const;            // true iff current segment is writable
 
     void operator++();                // move to next segment
     void reset();                     // start over from first segment

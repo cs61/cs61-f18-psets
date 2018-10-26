@@ -1,6 +1,12 @@
 #include "kernel.hh"
 #include "k-vmiter.hh"
 
+// k-memviewer.cc
+//
+//    The `memusage` class tracks memory usage by walking page tables,
+//    looks for errors, and prints the memory map to the console.
+
+
 class memusage {
   public:
     // tracks physical addresses in the range [0, maxpa)
@@ -47,6 +53,12 @@ class memusage {
             v_[pa / PAGESIZE] |= flags;
         }
     }
+    // return one of the processes set in a mark
+    static int marked_pid(unsigned v) {
+        return lsb(v >> 2);
+    }
+    // print an error about a page table
+    void page_error(uintptr_t pa, const char* desc, int pid) const;
 };
 
 
@@ -105,6 +117,13 @@ void memusage::refresh() {
     }
 }
 
+void memusage::page_error(uintptr_t pa, const char* desc, int pid) const {
+    const char* fmt = pid >= 0
+        ? "PAGE TABLE ERROR: %lx: %s (pid %d)\n"
+        : "PAGE TABLE ERROR: %lx: %s\n";
+    error_printf(CPOS(22, 0), COLOR_ERROR, fmt, pa, desc, pid);
+    log_printf(fmt, pa, desc, pid);
+}
 
 uint16_t memusage::symbol_at(uintptr_t pa) const {
     bool is_reserved = reserved_physical_address(pa);
@@ -123,34 +142,38 @@ uint16_t memusage::symbol_at(uintptr_t pa) const {
     auto v = v_[pa / PAGESIZE];
     if (pa >= (uintptr_t) console && pa < (uintptr_t) console + PAGESIZE) {
         return 'C' | 0x0700;
+    } else if (is_reserved && v > (f_kernel | f_user)) {
+        page_error(pa, "reserved page mapped for user", marked_pid(v));
+        return 'R' | 0x0C00;
     } else if (is_reserved) {
-        return 'R' | (v > (f_kernel | f_user) ? 0x0C00 : 0x0700);
+        return 'R' | 0x0700;
+    } else if (is_kernel && v > (f_kernel | f_user)) {
+        page_error(pa, "kernel data page mapped for user", marked_pid(v));
+        return 'K' | 0xCD00;
     } else if (is_kernel) {
-        return 'K' | (v > (f_kernel | f_user) ? 0xCD00 : 0x4D00);
+        return 'K' | 0x0D00;
     } else if (pa >= MEMSIZE_PHYSICAL) {
         return ' ' | 0x0700;
     } else {
         if (v == 0) {
             return '.' | 0x0700;
         } else if (v == f_kernel) {
-            return 'K' | 0x4000;
+            return 'K' | 0x0D00;
         } else if (v == f_user) {
             return '.' | 0x0700;
         } else if ((v & f_kernel) && (v & f_user)) {
-            // kernel-restricted + user-accessible = error
-            return 'E' | 0xF400;
+            page_error(pa, "kernel allocated page mapped for user",
+                       marked_pid(v));
+            return '*' | 0xF400;
         } else {
             // find lowest process involved with this page
-            int pid = 1;
-            while (!(v & f_process(pid))) {
-                ++pid;
-            }
+            pid_t pid = marked_pid(v);
             // foreground color is that associated with `pid`
             static const uint8_t colors[] = { 0xF, 0xC, 0xA, 0x9, 0xE };
             uint16_t ch = colors[pid % 5] << 8;
             if (v & f_kernel) {
-                // kernel page: dark red background
-                ch |= 0x4000;
+                // kernel page: blue background
+                ch |= 0x1000;
             }
             if (v > (f_process(pid) | f_kernel | f_user)) {
                 // shared page
@@ -194,6 +217,10 @@ static void console_memviewer_virtual(memusage& mu, proc* vmp) {
 
 
 void console_memviewer(proc* vmp) {
+    // Process 0 must never be used.
+    assert(ptable[0].state == P_FREE);
+
+    // track physical memory
     static memusage mu;
     mu.refresh();
 
@@ -211,6 +238,6 @@ void console_memviewer(proc* vmp) {
     if (vmp && vmp->pagetable) {
         console_memviewer_virtual(mu, vmp);
     } else {
-        console_printf(CPOS(10, 0), 0x0F00, "\n\n\n\n\n\n\n\n\n\n");
+        console_printf(CPOS(10, 0), 0x0F00, "\n\n\n\n\n\n\n\n\n\n\n\n\n");
     }
 }

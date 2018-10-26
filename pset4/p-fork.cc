@@ -1,6 +1,8 @@
 #include "process.hh"
 #include "lib.hh"
+#ifndef ALLOC_SLOWDOWN
 #define ALLOC_SLOWDOWN 100
+#endif
 
 extern uint8_t end[];
 

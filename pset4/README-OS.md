@@ -2,8 +2,8 @@ WEENSYOS
 ========
 
 Type `make run` to run our OS using the QEMU emulator. We expect this
-to work only on CS50 Appliance and other Linux hosts. If you have
-problems, check out Troubleshooting below.
+to work only on Linux hosts. If you have problems, check out
+Troubleshooting below.
 
 Running the OS
 --------------
@@ -33,33 +33,34 @@ Real operating systems are big. We have tried to boil down this OS to
 a minimum, comment it to help you, and separate x86 specifics from
 more fundamental issues. Here is an overview of the code.
 
-=== Important code ===
+### Important code
 
-*   `kernel.c`: The kernel. Uses functions declared and described in
-    `kernel.h` and `lib.h`.
-*   `p-allocator.c`, `p-fork.c`, and `p-forkexit.c`: The applications.
-    Uses functions declared and described in `process.h` and `lib.h`.
+* `kernel.cc`: The kernel. Uses functions declared and described in
+  `kernel.hh` and `lib.hh`.
+* `k-vmiter.hh`: Virtual and physical memory iterators as described in
+  Section 4.
+* `p-allocator.cc`, `p-fork.cc`, and `p-forkexit.cc`: The applications.
+  Uses functions declared and described in `process.hh` and `lib.hh`.
 
-=== Support code ===
+### Support code
 
 You may read these if you're interested but you should be able to do
-the pset using only the code and descriptions in `kernel.c`, `lib.h`,
-and `kernel.h`.
+the pset using only the code and descriptions in `kernel.cc`, `lib.hh`,
+`kernel.hh`, and `k-vmiter.hh`.
 
-*   `bootstart.S`, `boot.c`: The bootloader.
-*   `k-hardware.c`: Functions that set up x86 hardware state using
-    programmed I/O and memory-mapped I/O instructions.
-*   `k-exception.S`: Kernel assembly code for handling exceptions
-    (interrupts, traps, and faults).
-*   `k-loader.c`: Kernel program loader, which loads processes from
-    "image files" into memory.
-*   `process.c`: Support code for applications.
-*   `lib.c`, `lib.h`: Support code useful in both the kernel and
-    applications.
-*   `x86-64.h`: x86-64 hardware definitions, including functions that
-    correspond to important x86-64 instructions.
-*   `elf.h`: ELF support information. (ELF is a format used for
-    executables.)
+* `bootentry.S`, `boot.cc`: The bootloader.
+* `k-hardware.cc`: Functions that set up and interact with x86
+  hardware state using programmed I/O and memory-mapped I/O
+  instructions.
+* `k-exception.S`: Kernel assembly code for handling exceptions
+  (interrupts, traps, and faults).
+* `process.cc`: Support code for applications.
+* `lib.cc`, `lib.hh`: Support code useful in both the kernel and
+  applications.
+* `x86-64.h`: x86-64 hardware definitions, including functions that
+  correspond to important x86-64 instructions.
+* `elf.h`: ELF support information. (ELF is a format used for
+  executables.)
 
 Build Files
 -----------
@@ -86,15 +87,14 @@ look at and puts them in the `obj/` directory.
 Troubleshooting
 ---------------
 
-The OS runs using the QEMU full-system emulator. On CS50 Appliance,
-our makefiles will install QEMU for you. On your own Linux machine,
-you will need to install QEMU yourself. On Ubuntu-based hosts, run
-`sudo apt-get install qemu`. On Fedora-based hosts, run `sudo yum
+The OS runs using the QEMU full-system emulator. Our makefiles may
+install QEMU for you. On your own Linux machine, you will need to
+install QEMU yourself, using a command such as (on Ubuntu) `sudo apt
 install qemu-system-x86`.
 
 If Control-C doesn't work on your QEMU, make sure you are using an
 actual Control key. On some machines QEMU ignores key remappings (such
-as swapping Control and Caps Lock).
+as swapped Control and Caps Lock).
 
 If Control-C still doesn't work on your QEMU, forcibly close it by
 running `make kill`.

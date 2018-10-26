@@ -1,6 +1,8 @@
 #include "process.hh"
 #include "lib.hh"
-#define ALLOC_SLOWDOWN 60
+#ifndef ALLOC_SLOWDOWN
+#define ALLOC_SLOWDOWN 20
+#endif
 
 extern uint8_t end[];
 
@@ -10,7 +12,12 @@ uint8_t* stack_bottom;
 
 void process_main() {
     while (1) {
-        if (rand() % ALLOC_SLOWDOWN == 0) {
+        int x = rand() % (6 * ALLOC_SLOWDOWN);
+        if (x == 0) {
+            if (sys_fork() > 0) {
+                sys_exit();
+            }
+        } else if (x < 4) {
             if (sys_fork() == 0) {
                 break;
             }

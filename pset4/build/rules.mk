@@ -116,8 +116,7 @@ QEMU_PRELOAD = $(shell if test -r $(QEMU_PRELOAD_LIBRARY); then echo LD_PRELOAD=
 
 
 # Run the emulator
-
-check-qemu: $(QEMU_PRELOAD_LIBRARY)
+check-qemu-console:
 	@if test -z "$$(which $(QEMU) 2>/dev/null)"; then \
 	    echo 1>&2; echo "***" 1>&2; \
 	    echo "*** Cannot run $(QEMU). You may not have installed it yet." 1>&2; \
@@ -132,6 +131,9 @@ check-qemu: $(QEMU_PRELOAD_LIBRARY)
 	        echo sudo $$cmd qemu-system-x86 1>&2; \
 	        echo 1>&2; exit 1; fi; \
 	else :; fi
+
+check-qemu: $(QEMU_PRELOAD_LIBRARY) check-qemu-console
+
 
 # Delete the build
 clean:
@@ -152,7 +154,7 @@ always:
 .PHONY: all always clean realclean distclean cleanfs fsck \
 	run run-graphic run-console run-monitor \
 	run-gdb run-gdb-graphic run-gdb-console \
-	check-qemu kill \
+	check-qemu-console check-qemu kill \
 	run-% run-graphic-% run-console-% run-monitor-% \
 	run-gdb-% run-gdb-graphic-% run-gdb-console-%
 

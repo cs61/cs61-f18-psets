@@ -4,9 +4,9 @@
 #include "k-vmiter.hh"
 #include <atomic>
 
-// k-hardware.c
+// k-hardware.cc
 //
-//    Grody functions for interacting with x86 hardware.
+//    Functions for interacting with x86 hardware.
 
 
 // hardware_init
@@ -326,7 +326,7 @@ bool reserved_physical_address(uintptr_t pa) {
 
 // allocatable_physical_address(pa)
 //    Returns true iff `pa` is an allocatable physical address, i.e.,
-//    not reserved or taken up with kernel data.
+//    not reserved or holding kernel data.
 
 bool allocatable_physical_address(uintptr_t pa) {
     extern char kernel_end[];
@@ -334,7 +334,8 @@ bool allocatable_physical_address(uintptr_t pa) {
         && (pa < KERNEL_START_ADDR
             || pa >= round_up((uintptr_t) kernel_end, PAGESIZE))
         && (pa < KERNEL_STACK_TOP - PAGESIZE
-            || pa >= KERNEL_STACK_TOP);
+            || pa >= KERNEL_STACK_TOP)
+        && pa < MEMSIZE_PHYSICAL;
 }
 
 
@@ -664,6 +665,8 @@ void log_printf(const char* format, ...) {
 int check_keyboard() {
     int c = keyboard_readc();
     if (c == 'a' || c == 'f' || c == 'e') {
+        // Turn off the timer interrupt.
+        init_timer(-1);
         // Install a temporary page table to carry us through the
         // process of reinitializing memory. This replicates work the
         // bootloader does.
@@ -827,8 +830,8 @@ const char* program_loader::data() const {
 size_t program_loader::data_size() const {
     return ph_ != endph_ ? ph_->p_filesz : 0;
 }
-bool program_loader::readonly() const {
-    return ph_ != endph_ && !(ph_->p_flags & ELF_PFLAG_WRITE);
+bool program_loader::writable() const {
+    return ph_ != endph_ && (ph_->p_flags & ELF_PFLAG_WRITE);
 }
 uintptr_t program_loader::entry() const {
     return elf_->e_entry;

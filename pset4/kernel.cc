@@ -2,7 +2,7 @@
 #include "lib.hh"
 #include "k-vmiter.hh"
 
-// kernel.c
+// kernel.cc
 //
 //    This is the kernel.
 
@@ -29,19 +29,20 @@ proc* current;                  // pointer to currently executing proc
 #define HZ 100                  // timer interrupt frequency (interrupts/sec)
 static unsigned ticks;          // # timer interrupts so far
 
-void exception(regstate* regs);
-uintptr_t syscall(regstate* regs);
-void __noreturn schedule();
-void __noreturn run(proc* p);
 
+// Memory state
+//    Information about physical page with address `pa` is stored in
+//    `pages[pa / PAGESIZE]`. In the handout code, each `pages` entry
+//    holds an *owner*, which is 0 for free pages and non-zero for
+//    allocated pages. You can change this as you see fit.
 
-static uintptr_t next_alloc_pa;
 pageinfo pages[NPAGES];
 
 
-// Memory functions
-
-void check_virtual_memory();
+void __noreturn schedule();
+void __noreturn run(proc* p);
+void exception(regstate* regs);
+uintptr_t syscall(regstate* regs);
 void memshow();
 
 
@@ -60,6 +61,8 @@ void kernel(const char* command) {
     init_hardware();
 
     console_clear();
+
+    ticks = 1;
     init_timer(HZ);
 
     // set up process descriptors
@@ -83,6 +86,21 @@ void kernel(const char* command) {
 }
 
 
+// kalloc(sz)
+//    Kernel memory allocator. Allocates `sz` contiguous bytes and
+//    returns a pointer to the allocated memory, or `nullptr` on failure.
+//    The returned memory is initialized to zero.
+//
+//    On WeensyOS, `kalloc` is a page-based allocator: if `sz > PAGESIZE`
+//    the allocation fails; if `sz < PAGESIZE` it allocates a whole page
+//    anyway.
+//
+//    The handout code returns the next allocatable free page it can find.
+//    It marks allocated pages by setting `pages[pagenum].owner = -1`.
+//    It never reuses pages or supports freeing memory (you'll change that).
+
+static uintptr_t next_alloc_pa;
+
 void* kalloc(size_t sz) {
     if (sz > PAGESIZE) {
         return nullptr;
@@ -103,6 +121,29 @@ void* kalloc(size_t sz) {
 }
 
 
+// kfree(ptr)
+//    Free `ptr`, which must have been previously returned by `kalloc`.
+//    If `ptr == nullptr` does nothing.
+//
+//    The handout code ignores `ptr` -- you'll change that.
+
+void kfree(void* ptr) {
+    uintptr_t pa = (uintptr_t) ptr;
+
+    // check that `ptr` is page-aligned, and either nullptr or allocatable
+    assert((pa & PAGEOFFMASK) == 0);
+    assert(!ptr || allocatable_physical_address(pa));
+
+    /* do nothing */
+}
+
+
+// kalloc_physical_page(pa, owner)
+//    Allocate the physical page at address `pa` for process `owner`.
+//
+//    This function is only used through Step 3 of the problem set.
+//    You can delete it after that.
+
 void* kalloc_physical_page(uintptr_t pa, pid_t owner) {
     assert((pa & PAGEOFFMASK) == 0);
 
@@ -114,11 +155,6 @@ void* kalloc_physical_page(uintptr_t pa, pid_t owner) {
     } else {
         return nullptr;
     }
-}
-
-
-void kfree(void* pa_ptr) {
-    /* do nothing */
 }
 
 
@@ -192,7 +228,6 @@ void exception(regstate* regs) {
     // (unless this is a kernel fault).
     console_show_cursor(cursorpos);
     if (regs->reg_intno != INT_PAGEFAULT || (regs->reg_err & PFERR_USER)) {
-        check_virtual_memory();
         memshow();
     }
 
@@ -265,7 +300,6 @@ uintptr_t syscall(regstate* regs) {
     // Show the current cursor location and memory state
     // (unless this is a kernel fault).
     console_show_cursor(cursorpos);
-    check_virtual_memory();
     memshow();
 
     // If Control-C was typed, exit the virtual machine.
@@ -309,13 +343,19 @@ uintptr_t syscall(regstate* regs) {
 
 void schedule() {
     pid_t pid = current->pid;
-    while (1) {
+    for (unsigned spins = 0; true; ++spins) {
         pid = (pid + 1) % NPROC;
         if (ptable[pid].state == P_RUNNABLE) {
             run(&ptable[pid]);
         }
+
         // If Control-C was typed, exit the virtual machine.
         check_keyboard();
+
+        // If spinning forever, show the memviewer.
+        if (spins % (1 << 12) == 0) {
+            memshow();
+        }
     }
 }
 
@@ -341,23 +381,6 @@ void run(proc* p) {
 }
 
 
-// check_virtual_memory
-//    Check operating system invariants about virtual memory. Panic if any
-//    of the invariants are false.
-
-void check_virtual_memory() {
-    // Process 0 must never be used.
-    assert(ptable[0].state == P_FREE);
-
-    // The kernel page table should be owned by the kernel;
-    // its reference count should equal 1, plus the number of processes
-    // that don't have their own page tables.
-    // Active processes have their own page tables. A process page table
-    // should be owned by that process and have reference count 1.
-    // All level-2-4 page tables must have reference count 1.
-}
-
-
 // memshow()
 //    Draw a picture of memory (physical and virtual) on the CGA console.
 //    Switches to a new process's virtual memory map every 0.25 sec.
@@ -365,7 +388,7 @@ void check_virtual_memory() {
 
 void memshow() {
     static unsigned last_ticks = 0;
-    static int showing = 1;
+    static int showing = 0;
 
     // switch to a new process every 0.25 sec
     if (last_ticks == 0 || ticks - last_ticks >= HZ / 2) {
@@ -373,14 +396,16 @@ void memshow() {
         showing = (showing + 1) % NPROC;
     }
 
-    int search = 0;
-    while ((ptable[showing].state == P_FREE
-            || !ptable[showing].pagetable)
-           && search < NPROC) {
-        showing = (showing + 1) % NPROC;
-        ++search;
+    proc* p = nullptr;
+    for (int search = 0; !p && search < NPROC; ++search) {
+        if (ptable[showing].state != P_FREE
+            && ptable[showing].pagetable) {
+            p = &ptable[showing];
+        } else {
+            showing = (showing + 1) % NPROC;
+        }
     }
 
     extern void console_memviewer(proc* vmp);
-    console_memviewer(&ptable[showing]);
+    console_memviewer(p);
 }

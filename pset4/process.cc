@@ -37,7 +37,7 @@ void panic(const char* format, ...) {
         strcpy(buf + len - (len == (int) sizeof(buf) - 1), "\n");
     }
     (void) console_printf(CPOS(23, 0), 0xC000, "%s", buf);
-    sys_panic(NULL);
+    sys_panic(nullptr);
 
     // should never get here
     while (1) {
@@ -48,7 +48,7 @@ void assert_fail(const char* file, int line, const char* msg) {
     (void) console_printf(CPOS(23, 0), 0xC000,
                           "PANIC: %s:%d: assertion '%s' failed\n",
                           file, line, msg);
-    sys_panic(NULL);
+    sys_panic(nullptr);
 
     // should never get here
     while (1) {
