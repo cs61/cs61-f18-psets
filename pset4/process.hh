@@ -56,9 +56,9 @@ inline int sys_page_alloc(void* addr) {
 //    the parent, and return 0 to the child. On failure, return -1.
 inline pid_t sys_fork() {
     register uintptr_t rax asm("rax") = SYSCALL_FORK;
-    asm volatile ("int %1"
+    asm volatile ("syscall"
                   : "+a" (rax)
-                  : "i" (INT_SYSCALL)
+                  :
                   : "cc", "rcx", "rdx", "rsi", "rdi",
                     "r8", "r9", "r10", "r11", "memory");
     return rax;
