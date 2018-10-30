@@ -574,7 +574,7 @@ elf_symtabref symtab = {
 __no_asan
 bool lookup_symbol(uintptr_t addr, const char** name, uintptr_t* start) {
     if (!kernel_pagetable[2].entry[8]) {
-        kernel_pagetable[2].entry[8] = 0x1000000 | PTE_PS | PTE_W | PTE_U;
+        kernel_pagetable[2].entry[8] = 0x1000000 | PTE_PS | PTE_P | PTE_W;
     }
 
     size_t l = 0;
