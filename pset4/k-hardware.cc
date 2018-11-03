@@ -792,26 +792,36 @@ extern uint8_t _binary_obj_p_forkexit_start[];
 extern uint8_t _binary_obj_p_forkexit_end[];
 
 struct ramimage {
+    const char* name;
     void* begin;
     void* end;
 } ramimages[] = {
-    { _binary_obj_p_allocator_start, _binary_obj_p_allocator_end },
-    { _binary_obj_p_allocator2_start, _binary_obj_p_allocator2_end },
-    { _binary_obj_p_allocator3_start, _binary_obj_p_allocator3_end },
-    { _binary_obj_p_allocator4_start, _binary_obj_p_allocator4_end },
-    { _binary_obj_p_fork_start, _binary_obj_p_fork_end },
-    { _binary_obj_p_forkexit_start, _binary_obj_p_forkexit_end }
+    { "allocator", _binary_obj_p_allocator_start, _binary_obj_p_allocator_end },
+    { "allocator2", _binary_obj_p_allocator2_start, _binary_obj_p_allocator2_end },
+    { "allocator3", _binary_obj_p_allocator3_start, _binary_obj_p_allocator3_end },
+    { "allocator4", _binary_obj_p_allocator4_start, _binary_obj_p_allocator4_end },
+    { "fork", _binary_obj_p_fork_start, _binary_obj_p_fork_end },
+    { "forkexit", _binary_obj_p_forkexit_start, _binary_obj_p_forkexit_end }
 };
 
 program_loader::program_loader(int program_number) {
-    // check that this is a valid program
-    int nprograms = sizeof(ramimages) / sizeof(ramimages[0]);
-    assert(program_number >= 0 && program_number < nprograms);
-    elf_ = (elf_header*) ramimages[program_number].begin;
-    assert(elf_->e_magic == ELF_MAGIC);
-    // XXX should check that no ELF pointers go beyond the data!
-
+    elf_ = nullptr;
+    if (program_number >= 0
+        && size_t(program_number) < sizeof(ramimages) / sizeof(ramimages[0])) {
+        elf_ = (elf_header*) ramimages[program_number].begin;
+    }
     reset();
+}
+int program_loader::program_number(const char* program_name) {
+    for (size_t i = 0; i != sizeof(ramimages) / sizeof(ramimages[0]); ++i) {
+        if (strcmp(program_name, ramimages[i].name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+program_loader::program_loader(const char* program_name)
+    : program_loader(program_number(program_name)) {
 }
 void program_loader::fix() {
     while (ph_ && ph_ != endph_ && ph_->p_type != ELF_PTYPE_LOAD) {
@@ -830,11 +840,14 @@ const char* program_loader::data() const {
 size_t program_loader::data_size() const {
     return ph_ != endph_ ? ph_->p_filesz : 0;
 }
+bool program_loader::present() const {
+    return ph_ != endph_;
+}
 bool program_loader::writable() const {
     return ph_ != endph_ && (ph_->p_flags & ELF_PFLAG_WRITE);
 }
 uintptr_t program_loader::entry() const {
-    return elf_->e_entry;
+    return elf_ ? elf_->e_entry : 0;
 }
 void program_loader::operator++() {
     if (ph_ != endph_) {
@@ -843,9 +856,15 @@ void program_loader::operator++() {
     }
 }
 void program_loader::reset() {
-    ph_ = (elf_program*) ((uint8_t*) elf_ + elf_->e_phoff);
-    endph_ = ph_ + elf_->e_phnum;
-    fix();
+    if (elf_) {
+        assert(elf_->e_magic == ELF_MAGIC);
+        // XXX should check that no ELF pointers go beyond the data!
+        ph_ = (elf_program*) ((uint8_t*) elf_ + elf_->e_phoff);
+        endph_ = ph_ + elf_->e_phnum;
+        fix();
+    } else {
+        ph_ = endph_ = nullptr;
+    }
 }
 
 

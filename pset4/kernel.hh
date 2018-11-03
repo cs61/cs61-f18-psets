@@ -170,18 +170,24 @@ void init_process(proc* p, int flags);
 //    Iterator type for executables.
 struct program_loader {
     program_loader(int program_number);
-    uintptr_t entry() const;          // virtual address of entry %rip
+    program_loader(const char* program_name);
+    static int program_number(const char* program_name);
 
     // Per-segment functions:
     uintptr_t va() const;             // virtual address of current segment
     size_t size() const;              // size of current segment in bytes
-                                      // (0 at end of executable)
+                                      // (0 if !present())
     const char* data() const;         // pointer to data for current segment
     size_t data_size() const;         // size of `data()`
+    bool present() const;             // true iff current segment is present
+                                      // (false at end of executable)
     bool writable() const;            // true iff current segment is writable
 
     void operator++();                // move to next segment
     void reset();                     // start over from first segment
+
+    // Overall function:
+    uintptr_t entry() const;          // virtual address of entry %rip
 
   private:
     elf_header* elf_;
