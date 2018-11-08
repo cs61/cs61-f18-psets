@@ -1,0 +1,5 @@
+*.o
+.deps
+cmdline
+out
+sh61
