@@ -743,15 +743,16 @@ sub run (@) {
     }
     $result = `cat out/$outfile`;
     # sanitization errors
-    my($sanitizer) = "";
-    if ($result =~ /\A([\s\S]*?)^(\S+\.cc:\d+:(?:\d+:)? runtime error[\s\S]+)\z/m) {
+    my($sanitizera, $sanitizerb) = ("", "");
+    if ($result =~ /\A([\s\S]*?)^(===+\s+==\d+==\s*ERROR[\s\S]*)\z/m) {
         $result = $1;
-        $sanitizer .= $2;
+        $sanitizerb = $2;
     }
-    if ($result =~ /\A([\s\S]*?)^(===+\s+==\d+==[\s\S]*)\z/m) {
-        $result = $1;
-        $sanitizer .= $2;
+    while ($result =~ /\A([\s\S]*?)^(\S+\.cc:\d+:(?:\d+:)? runtime error.*(?:\n|\z)|=+\s+WARNING.*Sanitizer[\s\S]*?\n=+\n)([\s\S]*)\z/m) {
+        $result = $1 . $3;
+        $sanitizera .= $2;
     }
+    my($sanitizer) = $sanitizera . $sanitizerb;
     $result =~ s%^sh61[\[\]\d]*\$ %%m;
     $result =~ s%sh61[\[\]\d]*\$ $%%m;
     $result =~ s%^\[\d+\]\s+\d+$%%mg;
@@ -787,8 +788,8 @@ sub run (@) {
     }
     if ($sanitizer ne "") {
         chomp $sanitizer;
-        $sanitizer = substr($sanitizer, 0, 400) . "..."
-            if length($sanitizer) > 400;
+        $sanitizer = substr($sanitizer, 0, 1200) . "..."
+            if length($sanitizer) > 1200;
         $sanitizer =~ s/\n/\n      /g;
         print OUT "    ${Redctx}sanitizer reports errors:${Off}\n      $sanitizer\n";
     }
@@ -811,6 +812,10 @@ my($leak_check) = 0;
 while (@ARGV && $ARGV[0] =~ /^-/) {
     if ($ARGV[0] eq "--leak" || $ARGV[0] eq "--leak-check") {
         $leak_check = 1;
+        shift @ARGV;
+        next;
+    } elsif ($ARGV[0] =~ /\A--leak=(.*)\z/) {
+        $leak_check = ($1 eq "1" || $1 eq "yes");
         shift @ARGV;
         next;
     } elsif ($ARGV[0] eq "--ignore-sigint") {

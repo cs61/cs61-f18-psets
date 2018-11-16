@@ -14,20 +14,20 @@ sh61: sh61.o helpers.o
 sleep61: sleep61.cc
 	$(call run,$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS) $(O) -o $@ $^ $(LDFLAGS) $(LIBS),BUILD $@)
 
+ifneq ($(filter -fsanitize=leak,$(CXXFLAGS)),)
+LEAKCHECK = --leak
+endif
+
 check: sh61
-	perl check.pl
+	perl check.pl $(LEAKCHECK)
 
 check-%: sh61
-	perl check.pl $(subst check-,,$@)
+	perl check.pl $(LEAKCHECK) $(subst check-,,$@)
 
 clean: clean-main
 clean-main:
 	$(call run,rm -f sh61 *.o *~ *.bak core *.core,CLEAN)
 	$(call run,rm -rf out *.dSYM $(DEPSDIR))
 
-realclean: clean
-	@echo + realclean
-	$(V)rm -rf $(DISTDIR) $(DISTDIR).tar.gz
-
 .PRECIOUS: %.o
-.PHONY: all clean clean-main check check-%
+.PHONY: all clean clean-main distclean check check-%

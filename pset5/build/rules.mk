@@ -21,6 +21,9 @@ endif
 
 check_for_sanitizer = $(if $(strip $(shell $(CC) -fsanitize=$(1) -x c -E /dev/null 2>&1 | grep sanitize=)),$(info ** WARNING: The `$(CC)` compiler does not support `-fsanitize=$(1)`.),1)
 ifeq ($(TSAN),1)
+ ifeq ($(or $(ISCLANG),$(filter-out 3.% 4.% 5.% 6.%,$(shell $(CC) -dumpversion)),$(filter-out Linux%,$(shell uname))),)
+$(info ** WARNING: If ThreadSanitizer fails, try `make SAN=1 CC=clang`.)
+ endif
  ifeq ($(call check_for_sanitizer,thread),1)
 CFLAGS += -fsanitize=thread
 CXXFLAGS += -fsanitize=thread
