@@ -67,6 +67,7 @@ Usage: ./simpong61 [-1] [-w WIDTH] [-h HEIGHT] [-b NBALLS] [-s NSTICKY]\n\
 //    expected to fix it.)
 void signal_handler(int) {
     char buf[BUFSIZ];
+    ssize_t nw = 0;
     if (main_board) {
         int nballs = 0;
         for (int y = 0; y < main_board->height_; ++y) {
@@ -88,10 +89,12 @@ void signal_handler(int) {
                 }
             }
             buf[std::min(main_board->width_, BUFSIZ - 1)] = '\n';
-            write(STDOUT_FILENO, buf, std::min(main_board->width_ + 1, BUFSIZ));
+            nw = write(STDOUT_FILENO, buf,
+                       std::min(main_board->width_ + 1, BUFSIZ));
         }
-        write(STDOUT_FILENO, "\n", 1);
+        nw = write(STDOUT_FILENO, "\n", 1);
     }
+    assert(nw >= 0);
 }
 
 // main(argc, argv)
