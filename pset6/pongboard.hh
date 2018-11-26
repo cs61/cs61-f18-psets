@@ -1,5 +1,6 @@
 #ifndef PONGBOARD_HH
 #define PONGBOARD_HH
+#include <cassert>
 #include <vector>
 #include <mutex>
 #include <condition_variable>
