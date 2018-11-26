@@ -91,6 +91,11 @@ struct pong_ball {
         pong_cell& cur_cell = board.cell(this->x_, this->y_);
         assert(cur_cell.ball_ == this);
 
+        // sticky cell: nothing to do
+        if (this->dx_ == 0 && this->dy_ == 0) {
+            return false;
+        }
+
         // obstacle: change direction on hitting a board edge
         if (board.cell(this->x_ + this->dx_, this->y_).type_ == cell_obstacle) {
             this->dx_ = -this->dx_;
@@ -116,9 +121,6 @@ struct pong_ball {
             // obstacle: reverse direction
             this->dx_ = -this->dx_;
             this->dy_ = -this->dy_;
-            return false;
-        } else if (this->dx_ == 0 && this->dy_ == 0) {
-            // on sticky cell: unsuccessful move
             return false;
         } else {
             // otherwise, move into the next cell
