@@ -388,7 +388,8 @@ int main(int argc, char** argv) {
         move_done = false;
 
         // update position
-        ball.move();
+        while (!ball.move()) {
+        }
 
         // wait 0.1sec
         usleep(delay);
